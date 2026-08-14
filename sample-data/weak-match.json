@@ -1,0 +1,10 @@
+{
+  "name": "Weak Match Test",
+  "email": "weakmatch@example.com",
+  "phone": "+17135551234",
+  "budget": 10500000,
+  "location": "Oak Ridge",
+  "propertyType": "COM",
+  "timeline": "0-3 months",
+  "financingReady": true
+}
