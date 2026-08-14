@@ -1,0 +1,229 @@
+{
+  "name": "NestPath Realty - Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "405d4a2a-7671-49bb-83e7-e61af8554576",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-ERR-' + $json.execution.id }}",
+            "Lead ID": "={{ 'LEAD-' + $execution.id }}",
+            "Workflow Stage": "SYSTEM",
+            "Event": "WORKFLOW_ERROR",
+            "Status": "FAILED",
+            "Message": "={{\n  'Workflow failed at node \"' +\n  $json.execution.lastNodeExecuted +\n  '\": ' +\n  $json.execution.error.message\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        0
+      ],
+      "id": "acce6dde-cff5-4642-bad7-299ab744c3a4",
+      "name": "Log Workflow Failure",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Log Workflow Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "200d2211-700d-4f52-bf16-8bbed47ebba2",
+  "meta": {
+    "instanceId": "d20041553155fa6f7b317dc520145b6cc86b6c795ecbba76c7f80cf9ec7c75ec"
+  },
+  "nodeGroups": [],
+  "id": "GQOIZipOWNN7Z9xO",
+  "tags": []
+}

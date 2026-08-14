@@ -1,0 +1,4496 @@
+{
+  "name": "NestPath Realty Business Process",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "real-estate-lead",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -64
+      ],
+      "id": "1f9b03cf-32df-4072-b5c7-928b47d69fe4",
+      "name": "Webhook",
+      "webhookId": "885c621d-7251-4afc-b539-639efa622db5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9d9cf9d5-28aa-43fc-bc2b-3def4617975e",
+              "name": "name",
+              "value": "={{ $json.body.name }}",
+              "type": "string"
+            },
+            {
+              "id": "6693319d-fd08-4643-92aa-5a80acd10344",
+              "name": "email",
+              "value": "={{ $json.body.email }}",
+              "type": "string"
+            },
+            {
+              "id": "20170860-60f4-4c1a-bef2-06d30b1dfe6a",
+              "name": "phone",
+              "value": "={{ $json.body.phone }}",
+              "type": "number"
+            },
+            {
+              "id": "01c8e5ba-a897-41e3-a750-705f94a6ee94",
+              "name": "budget",
+              "value": "={{ $json.body.budget }}",
+              "type": "number"
+            },
+            {
+              "id": "8caaf731-2dd3-4a44-9f2c-38c3f09e94dd",
+              "name": "location",
+              "value": "={{ $json.body.location }}",
+              "type": "string"
+            },
+            {
+              "id": "de5e347d-fba8-4ac9-a52f-e23b50010afe",
+              "name": "propertyType",
+              "value": "={{ $json.body.propertyType }}",
+              "type": "string"
+            },
+            {
+              "id": "de698724-74b3-425e-af41-e8a585b847b5",
+              "name": "timeline",
+              "value": "={{ $json.body.timeline }}",
+              "type": "string"
+            },
+            {
+              "id": "8589b17d-8086-4c5f-8ec8-55a1a794233e",
+              "name": "financingReady",
+              "value": "={{ $json.body.financingReady === true || $json.body.financingReady === 'true' }}",
+              "type": "string"
+            },
+            {
+              "id": "af41f962-6089-494c-9bfa-506a2952fa17",
+              "name": "receivedAt",
+              "value": "={{ $now }}",
+              "type": "string"
+            },
+            {
+              "id": "3c792c48-7287-44e3-ad68-054930806d0d",
+              "name": "leadId",
+              "value": "={{ 'LEAD-' + $execution.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        -64
+      ],
+      "id": "5e38a031-a721-4b84-8323-dd6f728765a0",
+      "name": "Normalize Lead"
+    },
+    {
+      "parameters": {
+        "jsCode": "const lead = $json;\n\nconst errors = [];\n\n// Required fields\nconst requiredFields = [\n  'name',\n  'email',\n  'phone',\n  'budget',\n  'location',\n  'propertyType',\n  'timeline'\n];\n\nfor (const field of requiredFields) {\n  if (\n    lead[field] === undefined ||\n    lead[field] === null ||\n    lead[field] === ''\n  ) {\n    errors.push(`${field} is required`);\n  }\n}\n\n// Budget\nif (\n  lead.budget !== undefined &&\n  (typeof lead.budget !== 'number' ||\n    Number.isNaN(lead.budget) ||\n    lead.budget <= 0)\n) {\n  errors.push('Budget must be a valid positive number');\n}\n\n// Email\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n\nif (lead.email && !emailRegex.test(lead.email)) {\n  errors.push('Invalid email address');\n}\n\n// Phone\nconst phoneRegex = /^\\+?[1-9]\\d{7,14}$/;\n\nif (lead.phone && !phoneRegex.test(lead.phone)) {\n  errors.push('Invalid phone number');\n}\n\nreturn [\n  {\n    json: {\n      ...lead,\n\n      validation: {\n        valid: errors.length === 0,\n        errors\n      }\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -64
+      ],
+      "id": "af1fcdf2-49de-4dbe-bf59-567719a506a1",
+      "name": "Validate Lead"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "41949119-ebdb-4f25-9c5c-cdd2869e4e69",
+              "leftValue": "={{ $json.validation.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        -64
+      ],
+      "id": "614f614b-0fee-45b7-8c44-3c6fc92ff4e5",
+      "name": "Lead Valid?"
+    },
+    {
+      "parameters": {
+        "url": "https://api.simplyrets.com/properties",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "cities",
+              "value": "={{ $('Normalize Lead').item.json.location }}"
+            },
+            {
+              "name": "maxprice",
+              "value": "={{ $('Normalize Lead').item.json.budget }}"
+            },
+            {
+              "name": "minprice",
+              "value": "={{ Math.round($('Normalize Lead').item.json.budget * 0.75) }}"
+            },
+            {
+              "name": "limit",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        -160
+      ],
+      "id": "eba9c3b5-1488-4828-8daf-b0ffa040c217",
+      "name": "Search SimplyRETS",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "aQ3RYsSy0VLZdAEr",
+          "name": "SimplyRETS Demo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const lead = $('Normalize Lead').first().json;\n\nconst listings = $input.all();\n\nconst scoredListings = listings.map(item => {\n  const property = item.json;\n\n  let score = 0;\n\n  // Normalize everything first\n  const listingCity = String(property.address?.city || '')\n    .trim()\n    .toLowerCase();\n\n  const requestedCity = String(lead.location || '')\n    .trim()\n    .toLowerCase();\n\n  const listingPrice = Number(property.listPrice);\n\n  const budget = Number(lead.budget);\n\n  const listingType = String(property.property?.type || '')\n    .trim()\n    .toUpperCase();\n\n  const requestedType = String(lead.propertyType || '')\n    .trim()\n    .toUpperCase();\n\n\n  // -------------------------\n  // LOCATION\n  // -------------------------\n\n  const locationMatched =\n    listingCity === requestedCity;\n\n  if (locationMatched) {\n    score += 40;\n  }\n\n\n  // -------------------------\n  // BUDGET\n  // -------------------------\n\n  const budgetMatched =\n    Number.isFinite(listingPrice) &&\n    Number.isFinite(budget) &&\n    listingPrice <= budget;\n\n  if (budgetMatched) {\n    score += 30;\n  }\n\n\n  // -------------------------\n  // PROPERTY TYPE\n  // -------------------------\n\n  const propertyTypeMatched =\n    listingType === requestedType;\n\n  if (propertyTypeMatched) {\n    score += 20;\n  }\n\n\n  // -------------------------\n  // WITHIN 10% OF BUDGET\n  // -------------------------\n\n  const nearBudgetMatched =\n    Number.isFinite(listingPrice) &&\n    Number.isFinite(budget) &&\n    listingPrice >= budget * 0.9 &&\n    listingPrice <= budget;\n\n  if (nearBudgetMatched) {\n    score += 10;\n  }\n\n\n  return {\n    ...property,\n\n    matchScore: score,\n\n    // TEMPORARY DEBUG INFO\n    debug: {\n      requestedCity,\n      listingCity,\n      locationMatched,\n\n      budget,\n      listingPrice,\n      budgetMatched,\n\n      requestedType,\n      listingType,\n      propertyTypeMatched,\n\n      minimumNearBudget: budget * 0.9,\n      nearBudgetMatched\n    }\n  };\n});\n\n\nscoredListings.sort(\n  (a, b) => b.matchScore - a.matchScore\n);\n\nconst bestMatch = scoredListings[0] || null;\n\nreturn [\n  {\n    json: {\n      lead,\n\n      totalListingsReceived: listings.length,\n\n      listings: scoredListings.slice(0, 5),\n\n      bestMatch,\n\n      bestMatchScore: bestMatch?.matchScore ?? null,\n\n      strongMatch: (bestMatch?.matchScore ?? 0) >= 80\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        -160
+      ],
+      "id": "ad56f025-f2b1-414b-9dc6-4811cb56472a",
+      "name": "Evaluate Listings"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c658a16c-7061-4fe6-ab35-1aac73ab733f",
+              "leftValue": "={{ $('Evaluate Listings').first().json.strongMatch }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1792,
+        -160
+      ],
+      "id": "beff1338-523e-4999-92fb-99d15404e054",
+      "name": "Strong Match?"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a real estate lead assistant.\n\nThe buyer requested:\n\nLocation: Houston\nBudget: $500,000\nProperty Type: Residential\nTimeline: 0-3 months\n\nNo properties satisfied all requested criteria.\n\nClosest available listings:\n\n1. Katy — $470,000\n2. Houston — $540,000\n3. Sugar Land — $495,000\n\nGenerate a short professional suggestion explaining the closest\nalternatives without inventing property information.\n\nReturn JSON:\n\n{\n  \"message\": \"\",\n  \"recommendedAdjustment\": \"\"\n}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2016,
+        -128
+      ],
+      "id": "90499025-4c4f-43ee-931d-039420a6d412",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        2032,
+        96
+      ],
+      "id": "bdf53bdb-02aa-4e07-a439-f881fdb847ff",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "llHFlrXMx9en9UCc",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"message\": \"We currently don't have an exact match within your preferred criteria, but there are several strong alternatives nearby.\",\n  \"recommendedAdjustment\": \"Consider expanding your search to Sugar Land, where a property is available within your budget.\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2160,
+        96
+      ],
+      "id": "09cfe063-cfbb-4816-b453-09206954bba1",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the original lead data.\n//\n// We reference Normalize Lead directly because the two branches before this\n// node don't have the same data shape:\n//\n// TRUE branch  → property/listing information\n// FALSE branch → AI Agent output\n//\n// The normalized lead is the reliable source for scoring.\nconst lead = $('Normalize Lead').first().json;\n\n\n// ------------------------------------------\n// 1. BUDGET SCORE\n// Maximum: 30 points\n// ------------------------------------------\n\nconst budget = Number(lead.budget);\n\nlet budgetScore = 0;\n\nif (budget >= 750000) {\n  budgetScore = 30;\n} else if (budget >= 500000) {\n  budgetScore = 25;\n} else if (budget >= 300000) {\n  budgetScore = 20;\n} else if (budget >= 150000) {\n  budgetScore = 10;\n} else {\n  budgetScore = 5;\n}\n\n\n// ------------------------------------------\n// 2. TIMELINE SCORE\n// Maximum: 40 points\n// ------------------------------------------\n\nconst timeline = String(lead.timeline || '')\n  .trim()\n  .toLowerCase();\n\nlet timelineScore = 0;\n\nswitch (timeline) {\n\n  case 'immediately':\n  case 'immediate':\n    timelineScore = 40;\n    break;\n\n  case '0-3 months':\n  case '0–3 months':\n    timelineScore = 35;\n    break;\n\n  case '3-6 months':\n  case '3–6 months':\n    timelineScore = 25;\n    break;\n\n  case '6-12 months':\n  case '6–12 months':\n    timelineScore = 15;\n    break;\n\n  case 'just browsing':\n  case 'browsing':\n    timelineScore = 5;\n    break;\n\n  default:\n    timelineScore = 5;\n}\n\n\n// ------------------------------------------\n// 3. FINANCING SCORE\n// Maximum: 30 points\n// ------------------------------------------\n\nlet financingScore = 5;\n\nif (\n  lead.financingReady === true ||\n  String(lead.financingReady).toLowerCase() === 'true'\n) {\n  financingScore = 30;\n}\n\n\n// ------------------------------------------\n// 4. TOTAL SCORE\n// ------------------------------------------\n\nconst totalScore =\n  budgetScore +\n  timelineScore +\n  financingScore;\n\n\n// ------------------------------------------\n// 5. CLASSIFICATION\n// ------------------------------------------\n\nlet leadTemperature;\n\nif (totalScore >= 75) {\n\n  leadTemperature = 'HOT';\n\n} else if (totalScore >= 45) {\n\n  leadTemperature = 'WARM';\n\n} else {\n\n  leadTemperature = 'COLD';\n\n}\n\n\n// ------------------------------------------\n// 6. Get data from whichever branch reached\n// this node\n// ------------------------------------------\n\nconst currentInput = $input.first().json;\n\n\n// ------------------------------------------\n// 7. RETURN ONE CLEAN OBJECT\n// ------------------------------------------\n\nreturn [\n  {\n    json: {\n\n      lead: {\n        name: lead.name,\n        email: lead.email,\n        phone: lead.phone,\n        budget: budget,\n        location: lead.location,\n        propertyType: lead.propertyType,\n        timeline: lead.timeline,\n        financingReady: lead.financingReady\n      },\n\n      scoring: {\n        budgetScore: budgetScore,\n        timelineScore: timelineScore,\n        financingScore: financingScore,\n        totalScore: totalScore,\n        temperature: leadTemperature\n      },\n\n      enrichment: currentInput,\n\n      scoredAt: new Date().toISOString()\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2592,
+        -160
+      ],
+      "id": "082e0abf-4c2f-4b46-9fd2-580b494801e9",
+      "name": "Score Lead"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Score Lead').item.json.scoring.temperature }}",
+                    "rightValue": "HOT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "764ed4a7-650c-4ec8-ad18-3d4be780dc53"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "HOT"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "dcf5eead-9463-4140-9650-8a5148e63e4f",
+                    "leftValue": "={{ $('Score Lead').item.json.scoring.temperature }}",
+                    "rightValue": "WARM",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WARM"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "fdf3ee36-dcd4-4b19-a15e-1db76441985e",
+                    "leftValue": "={{ $('Score Lead').item.json.scoring.temperature }}",
+                    "rightValue": "COLD",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "COLD"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        3040,
+        -176
+      ],
+      "id": "836298f9-cae5-422b-b1c1-377ed109d138",
+      "name": "Route Lead"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblu0ztHB9go3iHPL",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblu0ztHB9go3iHPL"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Financing Ready": "={{ $json.lead.financingReady === true || $json.lead.financingReady === 'true' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Budget": "={{ $json.lead.budget }}",
+            "Lead Score": "={{ $json.scoring.totalScore }}",
+            "Best Match Price": "={{ $json.enrichment.bestMatch.listPrice }}",
+            "Property Match Score": "={{ $json.enrichment.bestMatch.matchScore }}",
+            "Name": "={{ $json.lead.name }}",
+            "Email": "={{ $json.lead.email }}",
+            "Phone": "={{ String($json.lead.phone) }}",
+            "Location": "={{ $json.lead.location }}",
+            "Property Type": "={{ $json.lead.propertyType }}",
+            "Timeline": "={{ $json.lead.timeline }}",
+            "Lead Temperature": "={{ $json.scoring.temperature }}",
+            "Priority": "High",
+            "Lead Status": "New",
+            "Best Match Address": "={{   $json.enrichment.bestMatch.address.full   + ', ' +   $json.enrichment.bestMatch.address.city   + ', ' +   $json.enrichment.bestMatch.address.state }}",
+            "Listing ID": "={{ $json.enrichment.bestMatch.listingId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Property Type",
+              "displayName": "Property Type",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Financing Ready",
+              "displayName": "Financing Ready",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Temperature",
+              "displayName": "Lead Temperature",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "HOT",
+                  "value": "HOT"
+                },
+                {
+                  "name": "WARM",
+                  "value": "WARM"
+                },
+                {
+                  "name": "COLD",
+                  "value": "COLD"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "High",
+                  "value": "High"
+                },
+                {
+                  "name": "Normal",
+                  "value": "Normal"
+                },
+                {
+                  "name": "Low",
+                  "value": "Low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Best Match Address",
+              "displayName": "Best Match Address",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Best Match Price",
+              "displayName": "Best Match Price",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Property Match Score",
+              "displayName": "Property Match Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Listing ID",
+              "displayName": "Listing ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Status",
+              "displayName": "Lead Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Nurturing",
+                  "value": "Nurturing"
+                },
+                {
+                  "name": "Closed",
+                  "value": "Closed"
+                },
+                {
+                  "name": "Archived",
+                  "value": "Archived"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        3264,
+        -352
+      ],
+      "id": "dcc6fbd0-6639-4326-b50a-a45157ac2fc1",
+      "name": "Create Hot Lead",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#hot-leads"
+        },
+        "text": "=🔥 *HOT REAL ESTATE LEAD*  \n*Name:* {{ $('Score Lead').first().json.lead.name }} \n*Email:* {{ $('Score Lead').first().json.lead.email }} \n*Phone:* {{ $('Score Lead').first().json.lead.phone }}  \n*Budget:* ${{ Number($('Score Lead').first().json.lead.budget).toLocaleString() }} \n*Location:* {{ $('Score Lead').first().json.lead.location }} \n*Property Type:* {{ $('Score Lead').first().json.lead.propertyType }} \n*Timeline:* {{ $('Score Lead').first().json.lead.timeline }} \n*Financing Ready:* {{ $('Score Lead').first().json.lead.financingReady }}  \n*Lead Score:* {{ $('Score Lead').first().json.scoring.totalScore }}/100 \n*Priority:* HOT 🔥  \n*Best Property Match*  \n*Address:* {{ $('Score Lead').first().json.enrichment.bestMatch.address.full }} \n*Price:* ${{ Number($('Score Lead').first().json.enrichment.bestMatch.listPrice).toLocaleString() }} \n*Match Score:* {{ $('Score Lead').first().json.enrichment.bestMatch.matchScore }}/100 \n\nImmediate agent follow-up recommended.\n",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        3712,
+        -352
+      ],
+      "id": "033fad57-bbd4-46ba-b578-657552c94b01",
+      "name": "Send Hot Lead Alert",
+      "webhookId": "398de95e-3dd0-4f60-bed4-931b0b6ca5d6",
+      "credentials": {
+        "slackApi": {
+          "id": "GKAMBE0Ho5btQMBP",
+          "name": "Slack account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        4160,
+        -160
+      ],
+      "id": "fb359e6c-4568-4fe3-8e24-7f389a9330b7",
+      "name": "Wait",
+      "webhookId": "54f7bc63-0641-4479-b167-87774fbc6c21"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Evaluate Listings').item.json.lead.email }}",
+        "subject": "=Quick update on {{ $('Evaluate Listings').item.json.lead.location }} listings, {{ $('Evaluate Listings').item.json.lead.name }}",
+        "emailType": "text",
+        "message": "=Just wanted to circle back, properties in {{ $('Evaluate Listings').item.json.lead.location }} matching your criteria have been moving fairly quickly lately, and the one at {{ $('Evaluate Listings').item.json.listings[0].address.full }} is still one of the strongest matches I've seen for your budget of ${{ $('Evaluate Listings').item.json.lead.budget }}\n\nNo pressure at all. I just didn't want you to miss out if this is still on your radar. If your timeline of {{ $('Evaluate Listings').item.json.lead.timeline }} still holds, I'd love to schedule a quick viewing or send over comparable listings so you have options either way.\n\nLet me know what works best for you. \n\nBest, \nNestPath Realty",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        4384,
+        -160
+      ],
+      "id": "a641fde0-9ce8-446d-95bd-6d75b276a5f1",
+      "name": "Send second follow up email",
+      "webhookId": "bc9fd807-feed-486f-aaa6-872eae83d57c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VEX0Y0NVLTBsllMM",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Evaluate Listings').item.json.lead.email }}",
+        "subject": "={{ $('Evaluate Listings').item.json.lead.name }}, still thinking about {{ $('Evaluate Listings').item.json.listings[0].address.full }} in{{ $('Evaluate Listings').item.json.listings[0].address.city }}?",
+        "emailType": "text",
+        "message": "=Hi {{ $('Evaluate Listings').item.json.lead.name }},  Hope you're doing well! I wanted to follow up on the property we discussed:   \n{{ $('Evaluate Listings').item.json.listings[0].address.full }} in {{ $('Evaluate Listings').item.json.listings[0].address.city }}  \nListed at ${{ $('Evaluate Listings').item.json.listings[0].listPrice }}  \nI know you mentioned a timeline of {{ $('Evaluate Listings').item.json.lead.timeline }}, so I just wanted to check in and see where your head's at. \nAre you still interested in this property, or would you like me to pull a few more options in {{ $('Evaluate Listings').item.json.lead.location }} that match your budget of ${{ $('Evaluate Listings').item.json.lead.budget }}?  \nHappy to jump on a quick call or send over more details, whatever's easiest for you. Looking forward to hearing from you!  \n\nBest, \nNestPath Realty",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        3712,
+        -160
+      ],
+      "id": "97511606-c2c6-46b7-a725-d2956d5d5916",
+      "name": "Send first follow up email",
+      "webhookId": "bc9fd807-feed-486f-aaa6-872eae83d57c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VEX0Y0NVLTBsllMM",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        4832,
+        -160
+      ],
+      "id": "cbd120f1-4f01-46ed-95ae-01c343c0c8e2",
+      "name": "Wait1",
+      "webhookId": "54f7bc63-0641-4479-b167-87774fbc6c21"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Evaluate Listings').item.json.lead.email }}",
+        "subject": "={{ $('Evaluate Listings').item.json.lead.name }}, don't want you to miss this one.",
+        "emailType": "text",
+        "message": "=I wanted to reach out one more time about {{ $('Evaluate Listings').item.json.listings[0].address.full }}. It's still available, but homes at this price point (${{ $('Evaluate Listings').item.json.listings[0].listPrice }}) in {{ $('Evaluate Listings').item.json.lead.location }} typically don't stay on the market long.\n\nI completely understand if priorities have shifted since we last spoke, but if you're still working toward a move in the next {{ $('Evaluate Listings').item.json.lead.timeline }}, now might be a good time to take another look before it's gone.\n\nHappy to answer any questions or set up a walkthrough whenever suits you.\n\nBest, \nNestPath Realty",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        5056,
+        -160
+      ],
+      "id": "06cd6e6d-90c4-48aa-97a8-dd95bad142a2",
+      "name": "Send third follow up email",
+      "webhookId": "bc9fd807-feed-486f-aaa6-872eae83d57c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VEX0Y0NVLTBsllMM",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5504,
+        -160
+      ],
+      "id": "9ff03e45-96d1-49e5-9481-7ae2374a52a1",
+      "name": "Wait2",
+      "webhookId": "54f7bc63-0641-4479-b167-87774fbc6c21"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Evaluate Listings').item.json.lead.email }}",
+        "subject": "=Should I keep {{ $('Evaluate Listings').item.json.lead.name }} on the list for {{ $('Evaluate Listings').item.json.lead.location }}?",
+        "emailType": "text",
+        "message": "=Hi {{ $('Evaluate Listings').item.json.lead.name }},\n\nI haven't heard back in a bit, so I just wanted to check in. Are you still house hunting in {{ $('Evaluate Listings').item.json.lead.location }}, or has your search taken a different direction?\n\nIf the property at {{ $('Evaluate Listings').item.json.listings[0].address.full }} (or anything similar within your ${{ $('Evaluate Listings').item.json.lead.budget }} budget) is still of interest, I'm happy to pick things back up whenever you're ready, no rush at all.\n\nIf now isn't the right time, that's completely okay too. Just let me know, and I'll make sure to reach out again closer to when your timeline lines up.\n\nBest, \nNestPath Realty",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        5728,
+        -160
+      ],
+      "id": "7eebf381-6d9b-44f7-a964-ad310f4cf030",
+      "name": "Send fourth follow up email",
+      "webhookId": "bc9fd807-feed-486f-aaa6-872eae83d57c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VEX0Y0NVLTBsllMM",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblu0ztHB9go3iHPL",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblu0ztHB9go3iHPL"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Financing Ready": "={{ $json.lead.financingReady === true || $json.lead.financingReady === 'true' }}",
+            "Lead Temperature": "WARM",
+            "Priority": "Normal",
+            "Lead Status": "Nurturing",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Name": "={{ $json.lead.name }}",
+            "Email": "={{ $json.lead.email }}",
+            "Budget": "={{ $json.lead.budget }}",
+            "Lead Score": "={{ $json.scoring.totalScore }}",
+            "Best Match Price": "={{ $json.enrichment.bestMatch.listPrice }}",
+            "Property Match Score": "={{ $json.enrichment.bestMatch.matchScore }}",
+            "Phone": "={{ String($json.lead.phone) }}",
+            "Location": "={{ $json.lead.location }}",
+            "Property Type": "={{ $json.lead.propertyType }}",
+            "Timeline": "={{ $json.lead.timeline }}",
+            "Best Match Address": "={{   $json.enrichment.bestMatch.address.full   + ', ' +   $json.enrichment.bestMatch.address.city   + ', ' +   $json.enrichment.bestMatch.address.state }}",
+            "Listing ID": "={{ $json.enrichment.bestMatch.listingId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Property Type",
+              "displayName": "Property Type",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Financing Ready",
+              "displayName": "Financing Ready",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Temperature",
+              "displayName": "Lead Temperature",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "HOT",
+                  "value": "HOT"
+                },
+                {
+                  "name": "WARM",
+                  "value": "WARM"
+                },
+                {
+                  "name": "COLD",
+                  "value": "COLD"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "High",
+                  "value": "High"
+                },
+                {
+                  "name": "Normal",
+                  "value": "Normal"
+                },
+                {
+                  "name": "Low",
+                  "value": "Low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Best Match Address",
+              "displayName": "Best Match Address",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Best Match Price",
+              "displayName": "Best Match Price",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Property Match Score",
+              "displayName": "Property Match Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Listing ID",
+              "displayName": "Listing ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Status",
+              "displayName": "Lead Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Nurturing",
+                  "value": "Nurturing"
+                },
+                {
+                  "name": "Closed",
+                  "value": "Closed"
+                },
+                {
+                  "name": "Archived",
+                  "value": "Archived"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        3264,
+        -160
+      ],
+      "id": "42fb88cf-f9b3-4131-8dc8-5ef7217b2622",
+      "name": "Create Warm Lead",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblu0ztHB9go3iHPL",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblu0ztHB9go3iHPL"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Financing Ready": "={{ $json.lead.financingReady === true || $json.lead.financingReady === 'true' }}",
+            "Lead Temperature": "COLD",
+            "Priority": "Low",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Name": "={{ $json.lead.name }}",
+            "Email": "={{ $json.lead.email }}",
+            "Budget": "={{ $json.lead.budget }}",
+            "Lead Score": "={{ $json.scoring.totalScore }}",
+            "Best Match Price": "={{ $json.enrichment.bestMatch.listPrice }}",
+            "Property Match Score": "={{ $json.enrichment.bestMatch.matchScore }}",
+            "Phone": "={{ String($json.lead.phone) }}",
+            "Location": "={{ $json.lead.location }}",
+            "Property Type": "={{ $json.lead.propertyType }}",
+            "Timeline": "={{ $json.lead.timeline }}",
+            "Best Match Address": "={{   $json.enrichment.bestMatch.address.full   + ', ' +   $json.enrichment.bestMatch.address.city   + ', ' +   $json.enrichment.bestMatch.address.state }}",
+            "Listing ID": "={{ $json.enrichment.bestMatch.listingId }}",
+            "Lead Status": "Reference"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Property Type",
+              "displayName": "Property Type",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Financing Ready",
+              "displayName": "Financing Ready",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Temperature",
+              "displayName": "Lead Temperature",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "HOT",
+                  "value": "HOT"
+                },
+                {
+                  "name": "WARM",
+                  "value": "WARM"
+                },
+                {
+                  "name": "COLD",
+                  "value": "COLD"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "High",
+                  "value": "High"
+                },
+                {
+                  "name": "Normal",
+                  "value": "Normal"
+                },
+                {
+                  "name": "Low",
+                  "value": "Low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Best Match Address",
+              "displayName": "Best Match Address",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Best Match Price",
+              "displayName": "Best Match Price",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Property Match Score",
+              "displayName": "Property Match Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Listing ID",
+              "displayName": "Listing ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Status",
+              "displayName": "Lead Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Nurturing",
+                  "value": "Nurturing"
+                },
+                {
+                  "name": "Reference",
+                  "value": "Reference"
+                },
+                {
+                  "name": "Archived",
+                  "value": "Archived"
+                },
+                {
+                  "name": "Closed",
+                  "value": "Closed"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        3264,
+        32
+      ],
+      "id": "259c3b57-e56b-4ca4-8e22-5d8ab35ec4d4",
+      "name": "Create Cold Lead",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "INTAKE",
+            "Event": "VALIDATION_SUCCESS",
+            "Status": "SUCCESS",
+            "Message": "={{ 'Lead validation completed successfully for ' + $('Normalize Lead').first().json.name }}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        -160
+      ],
+      "id": "cc7ed9b3-6e31-402a-90bc-e1ab90955b61",
+      "name": "Log Validation Success",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "INTAKE",
+            "Event": "VALIDATION_FAILED",
+            "Status": "FAILED",
+            "Message": "={{\n  'Lead validation failed: ' +\n  $('Validate Lead').first().json.validation.errors.join(', ')\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        32
+      ],
+      "id": "a0a9a411-2d9e-49f9-8adf-11acd8276eaa",
+      "name": "Log Validation Failure",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "ENRICHMENT",
+            "Event": "LISTING_SEARCH_COMPLETED",
+            "Status": "SUCCESS",
+            "Message": "={{\n  'SimplyRETS search completed for ' +\n  $('Normalize Lead').first().json.location +\n  '. ' +\n  $('Evaluate Listings').first().json.listings.length +\n  ' candidate listings evaluated.'\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        -160
+      ],
+      "id": "ead71eaf-4e14-47b1-8c44-b1c04e1eab95",
+      "name": "Log Enrichment Completed",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "ENRICHMENT",
+            "Event": "PROPERTY_MATCH_FOUND",
+            "Status": "SUCCESS",
+            "Message": "={{\n  'Strong property match found. Listing ID: ' +\n  $('Evaluate Listings').first().json.bestMatch.listingId +\n  ', Match Score: ' +\n  $('Evaluate Listings').first().json.bestMatch.matchScore\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        2368,
+        -384
+      ],
+      "id": "f4f8f287-3586-474a-bc0c-b7a12f474c75",
+      "name": "Log Property Match Found",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "ENRICHMENT",
+            "Event": "AI_ALTERNATIVE_GENERATED",
+            "Status": "SUCCESS",
+            "Message": "={{\n  'No strong property match found. AI generated alternative recommendations.'\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        2368,
+        -128
+      ],
+      "id": "41b20207-4665-41bc-b853-b0f08b2874f9",
+      "name": "Log AI Alternative Generated",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "SCORING",
+            "Event": "LEAD_SCORED",
+            "Status": "SUCCESS",
+            "Message": "={{\n  'Lead scored ' +\n  $('Score Lead').first().json.scoring.totalScore +\n  '/100 and classified as ' +\n  $('Score Lead').first().json.scoring.temperature\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        2816,
+        -160
+      ],
+      "id": "79fc063d-b402-44d9-bb88-9d69d5df8ff4",
+      "name": "Log Lead Scored",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "ROUTING",
+            "Event": "HOT_LEAD_SLACK_NOTIFICATION_SENT",
+            "Status": "SUCCESS",
+            "Message": "={{\n  'Hot lead notification sent to sales channel for ' +\n  $('Score Lead').first().json.lead.name\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        3936,
+        -352
+      ],
+      "id": "9096fcaa-8e37-46aa-bd33-d589a53f19a0",
+      "name": "Log Slack Notification",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "ROUTING",
+            "Event": "LEAD_RECORD_CREATED",
+            "Status": "SUCCESS",
+            "Message": "={{\n  'Lead record created in Airtable CRM. Temperature: ' +\n  $('Score Lead').first().json.scoring.temperature\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        3488,
+        -352
+      ],
+      "id": "ebec7e07-7bcc-4da2-8bca-7ffd380c6146",
+      "name": "Log Hot Lead Saved",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "ROUTING",
+            "Event": "WARM_LEAD_NURTURE_STARTED",
+            "Status": "SUCCESS",
+            "Message": "={{\n  'Warm lead entered the 14-day follow-up sequence.'\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        3488,
+        -160
+      ],
+      "id": "22a9e24b-ce51-444e-84cc-ec386730a036",
+      "name": "Log Warm Lead Saved",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "ROUTING",
+            "Event": "FOLLOWUP_EMAIL_1_SENT",
+            "Status": "SUCCESS",
+            "Message": "={{\n  'Warm lead first follow-up email sent.'\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        3936,
+        -160
+      ],
+      "id": "9f2e287b-fdfe-4655-968c-342656b736ab",
+      "name": "Log First Email Sent",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "ROUTING",
+            "Event": "FOLLOWUP_EMAIL_2_SENT",
+            "Status": "SUCCESS",
+            "Message": "={{\n  'Warm lead second follow-up email sent.'\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        4608,
+        -160
+      ],
+      "id": "90fa7f9e-ac69-47b6-b051-198002d553f0",
+      "name": "Log Second Email Sent",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "ROUTING",
+            "Event": "FOLLOWUP_EMAIL_3_SENT",
+            "Status": "SUCCESS",
+            "Message": "={{\n  'Warm lead third follow-up email sent.'\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        5280,
+        -160
+      ],
+      "id": "e0fe9c90-02f1-4d60-8ac6-e4b4776ce49f",
+      "name": "Log Third Email Sent",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "ROUTING",
+            "Event": "FOLLOWUP_EMAIL_4_SENT",
+            "Status": "SUCCESS",
+            "Message": "={{\n  'Warm lead fourth follow-up email sent.'\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        5952,
+        -160
+      ],
+      "id": "244d26fe-cd0a-4cc4-9b00-ba248066c287",
+      "name": "Log Fourth Email Sent",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appoSoXyH9PPn37VL",
+          "mode": "list",
+          "cachedResultName": "NestPath Realty CRM",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblH9qMA030wJh2bx",
+          "mode": "list",
+          "cachedResultName": "Audit Logs",
+          "cachedResultUrl": "https://airtable.com/appoSoXyH9PPn37VL/tblH9qMA030wJh2bx"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Log ID": "={{ 'LOG-' + $execution.id + '-VALIDATION' }}",
+            "Lead ID": "={{ $('Normalize Lead').first().json.leadId }}",
+            "Lead Email": "={{ $('Normalize Lead').first().json.email }}",
+            "Workflow Stage": "ROUTING",
+            "Event": "COLD_LEAD_STORED",
+            "Status": "INFO",
+            "Message": "={{\n  'Cold lead stored for reference. Score: ' +\n  $('Score Lead').first().json.scoring.totalScore\n}}",
+            "Execution ID": "={{ $execution.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Log ID",
+              "displayName": "Log ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Email",
+              "displayName": "Lead Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Workflow Stage",
+              "displayName": "Workflow Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "INTAKE",
+                  "value": "INTAKE"
+                },
+                {
+                  "name": "ENRICHMENT",
+                  "value": "ENRICHMENT"
+                },
+                {
+                  "name": "SCORING",
+                  "value": "SCORING"
+                },
+                {
+                  "name": "ROUTING",
+                  "value": "ROUTING"
+                },
+                {
+                  "name": "SYSTEM",
+                  "value": "SYSTEM"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Event",
+              "displayName": "Event",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "INFO",
+                  "value": "INFO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Execution ID",
+              "displayName": "Execution ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        3488,
+        32
+      ],
+      "id": "c961d2e0-ebfd-4b58-9261-d5999ca9fc42",
+      "name": "Log Cold Lead Saved",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "ZneNWMvj9260cuCa",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Lead": {
+      "main": [
+        [
+          {
+            "node": "Validate Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Lead": {
+      "main": [
+        [
+          {
+            "node": "Lead Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Valid?": {
+      "main": [
+        [
+          {
+            "node": "Log Validation Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Validation Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search SimplyRETS": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Listings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Listings": {
+      "main": [
+        [
+          {
+            "node": "Log Enrichment Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Strong Match?": {
+      "main": [
+        [
+          {
+            "node": "Log Property Match Found",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Log AI Alternative Generated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Lead": {
+      "main": [
+        [
+          {
+            "node": "Log Lead Scored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Lead": {
+      "main": [
+        [
+          {
+            "node": "Create Hot Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Warm Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Cold Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Hot Lead": {
+      "main": [
+        [
+          {
+            "node": "Log Hot Lead Saved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Send second follow up email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send first follow up email": {
+      "main": [
+        [
+          {
+            "node": "Log First Email Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send second follow up email": {
+      "main": [
+        [
+          {
+            "node": "Log Second Email Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Send third follow up email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send third follow up email": {
+      "main": [
+        [
+          {
+            "node": "Log Third Email Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "Send fourth follow up email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Warm Lead": {
+      "main": [
+        [
+          {
+            "node": "Log Warm Lead Saved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Validation Success": {
+      "main": [
+        [
+          {
+            "node": "Search SimplyRETS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Enrichment Completed": {
+      "main": [
+        [
+          {
+            "node": "Strong Match?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Property Match Found": {
+      "main": [
+        [
+          {
+            "node": "Score Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log AI Alternative Generated": {
+      "main": [
+        [
+          {
+            "node": "Score Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Lead Scored": {
+      "main": [
+        [
+          {
+            "node": "Route Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Hot Lead Alert": {
+      "main": [
+        [
+          {
+            "node": "Log Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Hot Lead Saved": {
+      "main": [
+        [
+          {
+            "node": "Send Hot Lead Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Warm Lead Saved": {
+      "main": [
+        [
+          {
+            "node": "Send first follow up email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log First Email Sent": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Second Email Sent": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Third Email Sent": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send fourth follow up email": {
+      "main": [
+        [
+          {
+            "node": "Log Fourth Email Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Cold Lead": {
+      "main": [
+        [
+          {
+            "node": "Log Cold Lead Saved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "GQOIZipOWNN7Z9xO",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "77eb94ea-10e9-481a-a151-f2049dc836aa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d20041553155fa6f7b317dc520145b6cc86b6c795ecbba76c7f80cf9ec7c75ec"
+  },
+  "nodeGroups": [],
+  "id": "xXm80kn4Sg9OjC7A",
+  "tags": []
+}
