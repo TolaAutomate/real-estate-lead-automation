@@ -1,0 +1,10 @@
+{
+  "name": "Strong Match Test",
+  "email": "strongmatch@example.com",
+  "phone": "+17135551234",
+  "budget": 10000000,
+  "location": "Oak Ridge",
+  "propertyType": "RES",
+  "timeline": "0-3 months",
+  "financingReady": true
+}
